@@ -1,1 +1,133 @@
+/* ============================================================
+   Quelldaten in den Bronze-Layer laden
+   ============================================================
 
+  Bei den drei SAP Quellen gibt es kein TRUNCATE, diese werden
+  laufend erweitert.
+
+  Allen anderen Referenzquellen werden mit TRUNCATE ersetzt/
+  überschrieben.
+
+   ============================================================ */
+
+
+-- ============================================================
+-- 1. SAP-Planungsdaten laden
+-- ============================================================
+
+INSERT INTO bronze.sap_planung
+SELECT *
+FROM read_csv(
+    'C:/Users/u234530/OneDrive - SBB/Komponentenreporting/Inputdateien/Planung/*.csv',
+    header = true,
+    union_by_name = true,
+    types = {
+        'Material': 'VARCHAR',
+        'Werk': 'VARCHAR'
+    }
+);
+
+
+-- ============================================================
+-- 2. SAP-Materialeingänge laden
+-- ============================================================
+
+INSERT INTO bronze.sap_materialeingang
+SELECT *
+FROM read_csv(
+    'C:/Users/u234530/OneDrive - SBB/Komponentenreporting/Inputdateien/Wareneingang/*.csv',
+    header = true,
+    delim = ';'
+);
+
+
+-- ============================================================
+-- 3. SAP-Materialausgänge laden
+-- ============================================================
+
+INSERT INTO bronze.sap_materialausgang
+SELECT *
+FROM read_csv(
+    'C:/Users/u234530/OneDrive - SBB/Komponentenreporting/Inputdateien/Warenausgang/*.csv',
+    header = true,
+    delim = ';'
+);
+
+
+-- ============================================================
+-- 4. Referenzdaten: Artikelliste neu laden
+-- ============================================================
+
+TRUNCATE TABLE bronze.ref_artikelliste;
+
+INSERT INTO bronze.ref_artikelliste
+SELECT *
+FROM read_csv(
+    'C:/Users/u234530/OneDrive - SBB/Komponentenreporting/Inputdateien/Referenzdateien/artikelliste.csv',
+    header = true,
+    delim = ';'
+);
+
+
+-- ============================================================
+-- 5. Referenzdaten: Taktmengen neu laden
+-- ============================================================
+
+TRUNCATE TABLE bronze.ref_taktmenge;
+
+INSERT INTO bronze.ref_taktmenge
+SELECT *
+FROM read_csv(
+    'C:/Users/u234530/OneDrive - SBB/Komponentenreporting/Inputdateien/Referenzdateien/taktmenge.csv',
+    header = true,
+    delim = ';'
+);
+
+
+-- ============================================================
+-- 6. Referenzdaten: Kalender neu laden
+-- ============================================================
+
+TRUNCATE TABLE bronze.ref_Kalender;
+
+INSERT INTO bronze.ref_kalender
+SELECT *
+FROM read_csv(
+    'C:/Users/u234530/OneDrive - SBB/Komponentenreporting/Inputdateien/Referenzdateien/werkskalender.csv',
+    header = true,
+    delim = ';'
+);
+
+
+-- ============================================================
+-- 7. Referenzdaten: Fahrzeugliste neu laden
+-- ============================================================
+
+TRUNCATE TABLE bronze.ref_fahrzeugliste;
+
+INSERT INTO bronze.ref_fahrzeugliste
+SELECT *
+FROM read_csv(
+    'C:/Users/u234530/OneDrive - SBB/Komponentenreporting/Inputdateien/Referenzdateien/Fahrzeugliste.csv',
+    header = true,
+    delim = ';'
+);
+
+
+-- ============================================================
+-- 8. Referenzdaten: Stücklisten neu laden
+-- ============================================================
+
+TRUNCATE TABLE bronze.ref_stueckliste;
+
+INSERT INTO bronze.ref_stueckliste
+SELECT *
+FROM read_csv(
+    'C:/Users/u234530/OneDrive - SBB/Komponentenreporting/Inputdateien/Referenzdateien/Stücklisten/*.csv',
+    header = true,
+    delim = ';',
+    union_by_name = true,
+    types = {
+        'source_reference': 'VARCHAR'
+    }
+);
