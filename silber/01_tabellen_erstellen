@@ -1,0 +1,121 @@
+/* ============================================================
+   Tabellenstruktur des Silver-Layers erstellen
+   ============================================================
+
+   Die Tabellen des Silver-Layers enthalten bereinigte,
+   vereinheitlichte und für die weitere Verarbeitung
+   vorbereitete Daten aus dem Bronze-Layer.
+
+   ============================================================ */
+
+
+-- ============================================================
+-- SAP-Planungsdaten
+-- ============================================================
+
+CREATE OR REPLACE TABLE silver.sap_planung (
+    "Artikel_ID" VARCHAR,
+    "Extraktionsdatum" DATE,
+    "Art" VARCHAR,
+    "Dispositionselement" VARCHAR,
+    "Bestell-/Auftragsart" VARCHAR,
+    "Nummer Dispositionselement" VARCHAR,
+    "Verursacher" VARCHAR,
+    "Zugang/Bedarf" DOUBLE,
+    "Plantermine" DATE
+);
+
+
+-- ============================================================
+-- SAP-Materialausgänge
+-- ============================================================
+
+CREATE OR REPLACE TABLE silver.sap_materialausgang (
+    "Artikel_ID" VARCHAR,
+    "Bewegungsart" VARCHAR,
+    "Buchungsdatum" DATE,
+    "Menge in ErfassME" DOUBLE,
+    "Betrag Hauswähr" VARCHAR,
+    "Auftrag" VARCHAR,
+    "Warenempfänger" VARCHAR
+);
+
+
+-- ============================================================
+-- SAP-Materialeingänge
+-- ============================================================
+
+CREATE OR REPLACE TABLE silver.sap_materialeingang (
+    "Artikel_ID" VARCHAR,
+    "Bewegungsart" VARCHAR,
+    "Buchungsdatum" DATE,
+    "Menge in ErfassME" DOUBLE,
+    "Auftrag" VARCHAR,
+);
+
+
+-- ============================================================
+-- Referenzdaten: Artikelliste
+-- ============================================================
+
+CREATE OR REPLACE TABLE silver.ref_artikelliste (
+    "Artikel_ID" VARCHAR,
+    "Werk" VARCHAR,
+    "Material" VARCHAR,
+    "Beschrieb" VARCHAR,
+    "Materialgruppe" VARCHAR,
+    "Fahrzeug" VARCHAR,
+);
+
+
+-- ============================================================
+-- Referenzdaten: Taktmengen
+-- ============================================================
+
+CREATE OR REPLACE TABLE silver.ref_takt (
+    "Materialgruppe" VARCHAR,
+    "Taktmenge pro Tag" DOUBLE
+);
+
+
+-- ============================================================
+-- Referenzdaten: Werkskalender
+-- ============================================================
+
+CREATE OR REPLACE TABLE silver.ref_kalender (
+    "Datum" DATE,
+    "Arbeitstage Olten" DOUBLE,
+    "Arbeitstage Yverdon" DOUBLE
+);
+
+
+-- ============================================================
+-- Referenzdaten: Stücklisten
+-- ============================================================
+
+CREATE OR REPLACE TABLE silver.ref_stueckliste (
+    "Artikel_ID" VARCHAR,
+    "Stufe" VARCHAR,
+    "Positionstyp" VARCHAR,
+    "Komponentennummer" VARCHAR,
+    "Objektkurtext" VARCHAR,
+    "Materialart" VARCHAR,
+    "Komponentemenge" DOUBLE,
+    "Einsatzwahrscheinlichkeit" DOUBLE,
+    "Menge BMe" DOUBLE,
+    "Standardpreis" DOUBLE
+);
+
+
+-- ============================================================
+-- Referenzdaten: Fahrzeugliste
+-- ============================================================
+
+CREATE OR REPLACE TABLE silver.ref_fahrzeugliste (
+    "Artikel_ID" VARCHAR,
+    "Klimageräte Art" VARCHAR,
+    "Ø Klimageräte FGR" DOUBLE,
+    "Ø Klimageräte FST" DOUBLE,
+    "Ø Einführung" DATE,
+    "Ø Anzahl KM Juli 2026" DOUBLE
+);
