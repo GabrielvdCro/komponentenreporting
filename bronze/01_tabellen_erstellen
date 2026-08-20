@@ -1,1 +1,145 @@
+/* ============================================================
+   Bronze-Tabellen erstellen
+   Erstellt die Tabellenstruktur für die Quelldaten im
+   Bronze-Layer. Die Tabellen orientieren sich an der Struktur
+   der jeweiligen SAP- und Referenzdateien.
+   ============================================================ */
 
+
+-- ============================================================
+-- SAP-Planungsdaten
+-- ============================================================
+
+CREATE OR REPLACE TABLE bronze.sap_planung (
+    "Extraktiondatum" DATE,
+    "Material" VARCHAR,
+    "Werk" VARCHAR,
+    "Pos.Dispoliste" VARCHAR,
+    "Plus/minus" VARCHAR,
+    "Dispositionselement" VARCHAR,
+    "Bestell-/Auftragsart" VARCHAR,
+    "Position Dispositionselement" VARCHAR,
+    "Nummer Dispositionselement" VARCHAR,
+    "Verursacher" VARCHAR,
+    "Nr._Disp._Tabelle" VARCHAR,
+    "Nummer Verursacher" VARCHAR,
+    "Kreditor" VARCHAR,
+    "Dispositionsdatum" DATE,
+    "Zugang/Bedarf" DOUBLE,
+    "Plantermine" DATE
+);
+
+
+-- ============================================================
+-- SAP-Materialausgang
+-- ============================================================
+
+CREATE OR REPLACE TABLE bronze.sap_materialausgang (
+    "Werk" VARCHAR,
+    "Lagerort" VARCHAR,
+    "Material" VARCHAR,
+    "Materialkurztext" VARCHAR,
+    "Bewegungsart" VARCHAR,
+    "Materialbeleg" VARCHAR,
+    "Position Materialbel" VARCHAR,
+    "Buchungsdatum" DATE,
+    "Menge in ErfassME" DOUBLE,
+    "Betrag Hauswähr" VARCHAR,
+    "Reservierung" VARCHAR,
+    "Auftrag" VARCHAR,
+    "Name des Benutzers" VARCHAR,
+    "Kostenstelle" VARCHAR,
+    "Warenempfänger" VARCHAR
+);
+
+
+-- ============================================================
+-- SAP-Materialeingang
+-- ============================================================
+
+CREATE OR REPLACE TABLE bronze.sap_materialeingang (
+    "Werk" VARCHAR,
+    "Lagerort" VARCHAR,
+    "Material" VARCHAR,
+    "Materialkurztext" VARCHAR,
+    "Bewegungsart" VARCHAR,
+    "Materialbeleg" VARCHAR,
+    "Position Materialbel" VARCHAR,
+    "Buchungsdatum" DATE,
+    "Menge in ErfassME" DOUBLE,
+    "Betrag Hauswähr" VARCHAR,
+    "Reservierung" VARCHAR,
+    "Auftrag" VARCHAR,
+    "Name des Benutzers" VARCHAR,
+    "Kostenstelle" VARCHAR
+);
+
+
+-- ============================================================
+-- Referenzdaten: Artikelliste
+-- ============================================================
+
+CREATE OR REPLACE TABLE bronze.ref_artikelliste (
+    "Werk" VARCHAR,
+    "Material" VARCHAR,
+    "Beschrieb" VARCHAR,
+    "Materialgruppe" VARCHAR,
+    "Fahrzeug" VARCHAR
+);
+
+
+-- ============================================================
+-- Referenzdaten: Taktmengen
+-- ============================================================
+
+CREATE OR REPLACE TABLE bronze.ref_taktmenge (
+    "Materialgruppe" VARCHAR,
+    "Taktmenge pro Tag" DOUBLE
+);
+
+
+-- ============================================================
+-- Referenzdaten: Werkskalender
+-- ============================================================
+
+CREATE OR REPLACE TABLE bronze.ref_kalender (
+    "Datum" DATE,
+    "AT Olten" DOUBLE,
+    "AT Yverdon" DOUBLE
+);
+
+
+-- ============================================================
+-- Referenzdaten: Stücklisten
+-- ============================================================
+
+CREATE OR REPLACE TABLE bronze.ref_stueckliste (
+    "Hauptartikel" VARCHAR,
+    "Stufe" VARCHAR,
+    "Positionstyp" VARCHAR,
+    "Komponentennummer" VARCHAR,
+    "Objektkurtext" VARCHAR,
+    "Materialart" VARCHAR,
+    "Komponentemenge" DOUBLE,
+    "Einsatzwahrscheinlichkeit" DOUBLE,
+    "Menge BMe" DOUBLE,
+    "Standardpreis" DOUBLE
+);
+
+
+-- ============================================================
+-- Referenzdaten: Flottenübersicht
+-- ============================================================
+
+CREATE OR REPLACE TABLE bronze.ref_flottenübersicht (
+    "Kst" VARCHAR,
+    "technischer Platz" VARCHAR,
+    "Bezeichnung" VARCHAR,
+    "Durch. KM letzte 3 Monate" DOUBLE,
+    "Anzahl KM Juli 2026" DOUBLE,
+    "Einführung" DATE,
+    "Anzahl Klimageräte FGR" DOUBLE,
+    "Anzahl Klimageräte FST" DOUBLE,
+    "Artikel" VARCHAR,
+    "Art" VARCHAR,
+);
