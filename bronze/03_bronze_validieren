@@ -1,1 +1,45 @@
+/* ============================================================
+   Bronze-Layer validieren
+   ============================================================
 
+   Prüfung: Anzahl Datensätze pro Tabelle.
+
+   ============================================================ */
+
+SELECT 'sap_planung' AS tabelle, COUNT(*) AS anzahl_datensaetze
+FROM bronze.sap_planung
+
+UNION ALL
+
+SELECT 'sap_materialeingang', COUNT(*)
+FROM bronze.sap_materialeingang
+
+UNION ALL
+
+SELECT 'sap_materialausgang', COUNT(*)
+FROM bronze.sap_materialausgang
+
+UNION ALL
+
+SELECT 'ref_artikelliste', COUNT(*)
+FROM bronze.ref_artikelliste
+
+UNION ALL
+
+SELECT 'ref_taktmenge', COUNT(*)
+FROM bronze.ref_taktmenge
+
+UNION ALL
+
+SELECT 'ref_kalender', COUNT(*)
+FROM bronze.ref_kalender
+
+UNION ALL
+
+SELECT 'ref_fahrzeugliste', COUNT(*)
+FROM bronze.ref_fahrzeugliste
+
+UNION ALL
+
+SELECT 'ref_stueckliste', COUNT(*)
+FROM bronze.ref_stueckliste;
