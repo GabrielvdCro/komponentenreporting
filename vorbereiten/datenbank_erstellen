@@ -1,0 +1,12 @@
+/* ============================================================
+   Datenbankstruktur erstellen sowie die Bronze-, Silver- und Gold-
+   Schemas gemäss der Medallion-Architektur.
+   ============================================================ */
+
+CREATE DATABASE Komponentenreporting;
+
+USE Komponentenreporting;
+
+CREATE SCHEMA bronze;
+CREATE SCHEMA silver;
+CREATE SCHEMA gold;
