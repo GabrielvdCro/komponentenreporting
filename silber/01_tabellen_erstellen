@@ -15,7 +15,7 @@
 
 CREATE OR REPLACE TABLE silver.sap_planung (
     "Artikel_ID" VARCHAR,
-    "Extraktionsdatum" DATE,
+    "Extraktiondatum" DATE,
     "Art" VARCHAR,
     "Dispositionselement" VARCHAR,
     "Bestell-/Auftragsart" VARCHAR,
@@ -112,10 +112,9 @@ CREATE OR REPLACE TABLE silver.ref_stueckliste (
 -- ============================================================
 
 CREATE OR REPLACE TABLE silver.ref_fahrzeugliste (
-    "Artikel_ID" VARCHAR,
-    "Klimageräte Art" VARCHAR,
+    "Artikel_ID" VARCHAR,,
     "Ø Klimageräte FGR" DOUBLE,
     "Ø Klimageräte FST" DOUBLE,
-    "Ø Einführung" DATE,
-    "Ø Anzahl KM Juli 2026" DOUBLE
+    "Ø Alter" DOUBLE,
+    "Ø Anzahl KM Juli Stand Juli 2026" DOUBLE
 );
