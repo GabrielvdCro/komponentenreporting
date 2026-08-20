@@ -1,1 +1,153 @@
+# ============================================================
+# Quelldateien werden vorbereitet
+# ============================================================
+#
+#
+# Prozess:
+# 1. Excel-Dateien werden in UTF-8 CSV files umgewandelt.
+# 2. Planungstabellen erhalten in Spalte A das Extraktionsdatum.
+# 3. Stücklisten erhalten in Spalte A den Hauptartikel.
+# 4. Es wird überprüft, ob alle Planungstabellen und Stücklisten eine Referenz haben in Spalte A.
+# 5. Es wird überprüft, ob es Duplikate gibt was nicht sein darf.
+# ============================================================
 
+
+from pathlib import Path
+import pandas as pd
+import re
+
+
+ROOT = Path(
+    r"C:\Users\u234530\OneDrive - SBB\Komponentenreporting\Inputdateien"
+)
+
+PLAN_FOLDER = ROOT / "Planung"
+BOM_FOLDER = ROOT / "Referenzdateien" / "Stücklisten"
+
+
+def get_plan_date(filename):
+    for pattern, date_format in [
+        (r"(\d{8})", "%Y%m%d"),
+        (r"(\d{2}\.\d{2}\.\d{4})", "%d.%m.%Y")
+    ]:
+        match = re.match(pattern, filename)
+
+        if match:
+            return pd.to_datetime(
+                match.group(1),
+                format=date_format
+            ).strftime("%Y-%m-%d")
+
+    raise ValueError(f"No date found in filename: {filename}")
+
+
+def add_source_reference(file):
+    df = pd.read_csv(
+        file,
+        sep=";",
+        dtype=str
+    )
+
+    if "source_reference" not in df.columns:
+
+        if file.parent == PLAN_FOLDER:
+            df.insert(
+                0,
+                "source_reference",
+                get_plan_date(file.stem)
+            )
+
+        elif file.parent == BOM_FOLDER:
+            df.insert(
+                0,
+                "source_reference",
+                file.stem
+            )
+
+        df.to_csv(
+            file,
+            sep=";",
+            index=False,
+            encoding="utf-8-sig"
+        )
+
+
+# ============================================================
+# 1. Excel-Dateien in CSV umwandeln
+# ============================================================
+
+for excel_file in ROOT.rglob("*.xlsx"):
+
+    csv_file = excel_file.with_suffix(".csv")
+
+    df = pd.read_excel(
+        excel_file,
+        dtype=str
+    )
+
+
+    # ============================================================
+    # 2. Planung: Extraktionsdatum in Spalte A
+    # ============================================================
+
+    if excel_file.parent == PLAN_FOLDER:
+        df.insert(
+            0,
+            "source_reference",
+            get_plan_date(excel_file.stem)
+        )
+
+
+    # ============================================================
+    # 3. Stücklisten: Hauptartikel in Spalte A
+    # ============================================================
+
+    elif excel_file.parent == BOM_FOLDER:
+        df.insert(
+            0,
+            "source_reference",
+            csv_file.stem
+        )
+
+    df.to_csv(
+        csv_file,
+        sep=";",
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+
+# ============================================================
+# 4. Prüfen, ob bestehende CSV-Dateien eine Referenz haben
+# ============================================================
+
+for file in list(PLAN_FOLDER.glob("*.csv")) + list(BOM_FOLDER.glob("*.csv")):
+    add_source_reference(file)
+
+
+# ============================================================
+# 5. Prüfen, ob doppelte CSV-Dateinamen vorhanden sind
+# ============================================================
+
+for folder in ROOT.rglob("*"):
+
+    if folder.is_dir():
+
+        names = [
+            file.stem.lower()
+            for file in folder.glob("*.csv")
+        ]
+
+        duplicates = {
+            name
+            for name in names
+            if names.count(name) > 1
+        }
+
+        if duplicates:
+            raise ValueError(
+                f"Duplicate CSV files found in {folder}: {duplicates}"
+            )
+
+
+print("fertig")
