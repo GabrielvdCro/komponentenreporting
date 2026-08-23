@@ -1,12 +1,31 @@
 /* ============================================================
-   Datenbankstruktur erstellen sowie die Bronze-, Silver- und Gold-
-   Schemas gemäss der Medallion-Architektur.
+   HINWEIS ZUR CODEERSTELLUNG
+   ============================================================
+   Die SQL- und Python-Codes werden mit Unterstützung
+   künstlicher Intelligenz entwickelt. Sämtliche generierten
+   Codes werden kritisch geprüft und bei Bedarf angepasst.
    ============================================================ */
 
-CREATE DATABASE Komponentenreporting;
 
+/* ============================================================
+   Datenbank und Schemas erstellen
+   ============================================================
+   Erstellt die Datenbank Komponentenreporting sowie die
+   Schemas Bronze, Silver und Gold für die Datenpipeline.
+   ============================================================ */
+
+
+-- Datenbank erstellen
+CREATE DATABASE IF NOT EXISTS Komponentenreporting;
+
+
+-- Datenbank auswählen
 USE Komponentenreporting;
 
-CREATE SCHEMA bronze;
-CREATE SCHEMA silver;
-CREATE SCHEMA gold;
+
+-- Schemas erstellen
+CREATE SCHEMA IF NOT EXISTS bronze;
+
+CREATE SCHEMA IF NOT EXISTS silver;
+
+CREATE SCHEMA IF NOT EXISTS gold;
