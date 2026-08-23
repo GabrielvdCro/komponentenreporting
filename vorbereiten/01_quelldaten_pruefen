@@ -1,16 +1,22 @@
 # ============================================================
-# Quelldateien werden vorbereitet
+# HINWEIS ZUR CODEERSTELLUNG
+# ============================================================
+# Die SQL- und Python-Codes werden mit Unterstützung
+# künstlicher Intelligenz entwickelt. Sämtliche generierten
+# Codes werden kritisch geprüft und bei Bedarf angepasst.
 # ============================================================
 #
+# QUELLDATEN VORBEREITEN
 #
+# ============================================================
 # Prozess:
-# 1. Excel-Dateien werden in UTF-8 CSV files umgewandelt.
+# 1. Excel-Dateien werden in UTF-8-CSV-Dateien umgewandelt.
 # 2. Planungstabellen erhalten in Spalte A das Extraktionsdatum.
 # 3. Stücklisten erhalten in Spalte A den Hauptartikel.
-# 4. Es wird überprüft, ob alle Planungstabellen und Stücklisten eine Referenz haben in Spalte A.
-# 5. Es wird überprüft, ob es Duplikate gibt was nicht sein darf.
+# 4. Bei bestehenden CSV-Dateien wird geprüft, ob in Spalte A
+#    eine Quellenreferenz vorhanden ist.
+# 5. Es wird geprüft, ob doppelte CSV-Dateinamen vorhanden sind.
 # ============================================================
-
 
 from pathlib import Path
 import pandas as pd
@@ -77,7 +83,6 @@ def add_source_reference(file):
 # ============================================================
 
 for excel_file in ROOT.rglob("*.xlsx"):
-
     csv_file = excel_file.with_suffix(".csv")
 
     df = pd.read_excel(
@@ -85,11 +90,7 @@ for excel_file in ROOT.rglob("*.xlsx"):
         dtype=str
     )
 
-
-    # ============================================================
-    # 2. Planung: Extraktionsdatum in Spalte A
-    # ============================================================
-
+    # Planung: Extraktionsdatum in Spalte A
     if excel_file.parent == PLAN_FOLDER:
         df.insert(
             0,
@@ -97,11 +98,7 @@ for excel_file in ROOT.rglob("*.xlsx"):
             get_plan_date(excel_file.stem)
         )
 
-
-    # ============================================================
-    # 3. Stücklisten: Hauptartikel in Spalte A
-    # ============================================================
-
+    # Stücklisten: Hauptartikel in Spalte A
     elif excel_file.parent == BOM_FOLDER:
         df.insert(
             0,
@@ -118,21 +115,23 @@ for excel_file in ROOT.rglob("*.xlsx"):
 
 
 # ============================================================
-# 4. Prüfen, ob bestehende CSV-Dateien eine Referenz haben
+# 2. Bestehende CSV-Dateien auf Quellenreferenz prüfen
 # ============================================================
 
-for file in list(PLAN_FOLDER.glob("*.csv")) + list(BOM_FOLDER.glob("*.csv")):
+for file in (
+    list(PLAN_FOLDER.glob("*.csv"))
+    + list(BOM_FOLDER.glob("*.csv"))
+):
     add_source_reference(file)
 
 
 # ============================================================
-# 5. Prüfen, ob doppelte CSV-Dateinamen vorhanden sind
+# 3. Auf doppelte CSV-Dateinamen prüfen
 # ============================================================
 
 for folder in ROOT.rglob("*"):
 
     if folder.is_dir():
-
         names = [
             file.stem.lower()
             for file in folder.glob("*.csv")
