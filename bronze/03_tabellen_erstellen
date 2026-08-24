@@ -114,16 +114,16 @@ CREATE OR REPLACE TABLE bronze.ref_kalender (
 -- ============================================================
 
 CREATE OR REPLACE TABLE bronze.ref_stueckliste (
-    "Hauptartikel" VARCHAR,
     "Stufe" VARCHAR,
     "Positionstyp" VARCHAR,
     "Komponentennummer" VARCHAR,
-    "Objektkurtext" VARCHAR,
+    "Objektkurztext" VARCHAR,
     "Materialart" VARCHAR,
-    "Komponentemenge" DOUBLE,
+    "Komponentenmenge" DOUBLE,
     "Einsatzwahrscheinlichkeit" DOUBLE,
     "Menge BMe" DOUBLE,
-    "Standardpreis" DOUBLE
+    "Standardpreis" DOUBLE,
+    "Hauptartikel" VARCHAR
 );
 
 
@@ -131,12 +131,12 @@ CREATE OR REPLACE TABLE bronze.ref_stueckliste (
 -- Referenzdaten: Flottenübersicht
 -- ============================================================
 
-CREATE OR REPLACE TABLE bronze.ref_flottenübersicht (
+CREATE OR REPLACE TABLE bronze.ref_flottenliste (
     "Kst" VARCHAR,
     "technischer Platz" VARCHAR,
     "Bezeichnung" VARCHAR,
     "Durch. KM letzte 3 Monate" DOUBLE,
-    "Anzahl KM Juli 2026" DOUBLE,
+    "Anzahl KM Stand Juli 2026" DOUBLE,
     "Einführung" DATE,
     "Anzahl Klimageräte FGR" DOUBLE,
     "Anzahl Klimageräte FST" DOUBLE,
