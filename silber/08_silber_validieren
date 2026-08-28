@@ -1,0 +1,132 @@
+/* ============================================================
+   Silver-Layer validieren
+   ============================================================
+
+   Prüfung:
+   1. Jede Artikel_ID aus Planung, Stückliste und Flottenliste
+      existiert in der Artikelliste.
+   2. Artikel_ID ist in der Artikelliste eindeutig.
+   3. Jede Materialgruppe aus der Takt-Tabelle existiert
+      in der Artikelliste.
+   4. Jedes zukünftige Planungsdatum existiert im Kalender.
+
+   Wenn keine Zeilen zurückgegeben werden,
+   ist die Validierung erfolgreich.
+   ============================================================ */
+
+
+-- ============================================================
+-- 1. Artikel_ID aus Planung fehlt in Artikelliste
+-- ============================================================
+
+SELECT
+    'sap_planung' AS pruefung,
+    p."Artikel_ID" AS fehlerwert
+
+FROM silver.sap_planung p
+
+LEFT JOIN silver.ref_artikelliste a
+    ON p."Artikel_ID" = a."Artikel_ID"
+
+WHERE a."Artikel_ID" IS NULL
+
+
+UNION ALL
+
+
+-- ============================================================
+-- 2. Artikel_ID aus Stückliste fehlt in Artikelliste
+-- ============================================================
+
+SELECT
+    'ref_stueckliste',
+    s."Artikel_ID"
+
+FROM silver.ref_stueckliste s
+
+LEFT JOIN silver.ref_artikelliste a
+    ON s."Artikel_ID" = a."Artikel_ID"
+
+WHERE a."Artikel_ID" IS NULL
+
+
+UNION ALL
+
+
+-- ============================================================
+-- 3. Artikel_ID aus Flottenliste fehlt in Artikelliste
+-- ============================================================
+
+SELECT
+    'ref_flottenliste',
+    f."Artikel_ID"
+
+FROM silver.ref_flottenliste f
+
+LEFT JOIN silver.ref_artikelliste a
+    ON f."Artikel_ID" = a."Artikel_ID"
+
+WHERE a."Artikel_ID" IS NULL
+
+
+UNION ALL
+
+
+-- ============================================================
+-- 4. Doppelte Artikel_ID in Artikelliste
+-- ============================================================
+
+SELECT
+    'duplikat_artikelliste',
+    "Artikel_ID"
+
+FROM silver.ref_artikelliste
+
+GROUP BY
+    "Artikel_ID"
+
+HAVING COUNT(*) > 1
+
+
+UNION ALL
+
+
+-- ============================================================
+-- 5. Materialgruppe aus Takt fehlt in Artikelliste
+-- ============================================================
+
+SELECT
+    'materialgruppe_takt',
+    t."Materialgruppe"
+
+FROM silver.ref_takt t
+
+LEFT JOIN (
+    SELECT DISTINCT
+        "Materialgruppe"
+    FROM silver.ref_artikelliste
+) a
+    ON t."Materialgruppe" = a."Materialgruppe"
+
+WHERE a."Materialgruppe" IS NULL
+
+
+UNION ALL
+
+
+-- ============================================================
+-- 6. Zukünftiges Planungsdatum fehlt im Kalender
+-- ============================================================
+
+SELECT
+    'planungsdatum_kalender',
+    CAST(p."Plantermine" AS VARCHAR)
+
+FROM silver.sap_planung p
+
+LEFT JOIN silver.ref_kalender k
+    ON p."Plantermine" = k."Datum"
+
+WHERE k."Datum" IS NULL
+  AND p."Plantermine" > CURRENT_DATE;
+
