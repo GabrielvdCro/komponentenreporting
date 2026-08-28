@@ -1,0 +1,292 @@
+
+/* ============================================================
+   Bronze in Silber laden
+   ============================================================
+
+   Die Bronzetabellen werden nach einer Transformation in die
+   Silber Tabelle reingeladen.
+
+   ============================================================ */
+
+TRUNCATE TABLE silver.sap_planung;
+
+INSERT INTO silver.sap_planung (
+    "Artikel_ID",
+    "Extraktiondatum",
+    "Art",
+    "Dispositionselement",
+    "Bestell-/Auftragsart",
+    "Nummer Dispositionselement",
+    "Verursacher",
+    "Zugang/Bedarf",
+    "Plantermine"
+)
+SELECT
+    CONCAT("Werk", '-', "Material") AS "Artikel_ID",
+    CAST("extraktiondatum" AS DATE),
+
+    CASE
+        WHEN "Plus/minus" = '+' THEN 'Planbedarfe'
+        WHEN "Plus/minus" = '-' THEN 'Bedarfe'
+    END AS "Art",
+
+    "Dispositionselement",
+    "Bestell-/Auftragsart",
+    "Nummer Dispositionselement",
+    "Verursacher",
+    "Zugang/Bedarf",
+    LAST_DAY(CAST("Plantermine" AS DATE)) AS "Plantermine"
+
+FROM bronze.sap_planung;
+
+
+TRUNCATE TABLE silver.sap_materialeingang;
+
+INSERT INTO silver.sap_materialeingang (
+    "Artikel_ID",
+    "Bewegungsart",
+    "Buchungsdatum",
+    "Menge in ErfassME",
+    "Auftrag"
+)
+SELECT
+    CONCAT("Werk", '-', "Material") AS "Artikel_ID",
+    "Bewegungsart",
+    LAST_DAY(CAST("Buchungsdatum" AS DATE)) AS "Buchungsdatum",
+    "Menge in ErfassME",
+    "Auftrag"
+
+FROM bronze.sap_materialeingang
+
+WHERE
+    "Auftrag" LIKE '2%'
+    OR "Auftrag" LIKE '3%'
+    OR "Auftrag" LIKE '15%'
+    OR "Auftrag" LIKE '16%'
+    OR "Auftrag" LIKE '17%';
+
+
+TRUNCATE TABLE silver.sap_materialausgang;
+
+INSERT INTO silver.sap_materialausgang (
+    "Artikel_ID",
+    "Bewegungsart",
+    "Buchungsdatum",
+    "Menge in ErfassME",
+    "Betrag Hauswähr",
+    "Auftrag",
+    "Warenempfänger"
+)
+SELECT
+    CONCAT("Werk", '-', "Material") AS "Artikel_ID",
+    "Bewegungsart",
+    LAST_DAY(CAST("Buchungsdatum" AS DATE)) AS "Buchungsdatum",
+    "Menge in ErfassME" * -1 AS "Menge in ErfassME",
+    "Betrag Hauswähr",
+    "Auftrag",
+
+    CASE
+        WHEN RIGHT("Warenempfänger", 4) LIKE '21%'
+            THEN 'Reparatur'
+        ELSE 'Revision'
+    END AS "Warenempfänger"
+
+FROM bronze.sap_materialausgang;
+
+
+TRUNCATE TABLE silver.ref_takt;
+
+INSERT INTO silver.ref_takt (
+    "Materialgruppe",
+    "Taktmenge pro Tag"
+)
+SELECT
+    "Materialgruppe",
+    "Taktmenge pro Tag"
+
+FROM bronze.ref_taktmenge;
+
+
+TRUNCATE TABLE silver.ref_artikelliste;
+
+INSERT INTO silver.ref_artikelliste (
+    "Artikel_ID",
+    "Werk",
+    "Material",
+    "Beschrieb",
+    "Materialgruppe",
+    "Fahrzeug"
+)
+SELECT
+    CONCAT(a."Werk", '-', a."Material") AS "Artikel_ID",
+
+    CASE
+        WHEN a."Werk" = '2101' THEN 'Yverdon'
+        WHEN a."Werk" = '2103' THEN 'Olten'
+        WHEN a."Werk" = '2104' THEN 'Bellinzona'
+        ELSE a."Werk"
+    END AS "Werk",
+
+    a."Material",
+    a."Beschrieb",
+    a."Materialgruppe",
+
+    CASE
+        WHEN a."Fahrzeug" IS NULL
+             OR TRIM(a."Fahrzeug") = ''
+            THEN 'Unbekannt'
+
+        WHEN TRIM(a."Fahrzeug") = 'Re' THEN 'Lok'
+        WHEN TRIM(a."Fahrzeug") = 'NPZ und DO' THEN 'Domino'
+        WHEN TRIM(a."Fahrzeug") = 'Ae' THEN 'Cargo'
+        WHEN TRIM(a."Fahrzeug") = 'BCM' THEN 'Cargo'
+        WHEN TRIM(a."Fahrzeug") = 'EWI/II' THEN 'Einheitswagen alt'
+        WHEN TRIM(a."Fahrzeug") = 'Cargo' THEN 'Cargo'
+        WHEN TRIM(a."Fahrzeug") = 'ETR' THEN 'Astoro'
+        WHEN TRIM(a."Fahrzeug") = 'Flirt' THEN 'Flirt'
+        WHEN TRIM(a."Fahrzeug") = 'GW' THEN 'Cargo'
+        WHEN TRIM(a."Fahrzeug") = '2000' THEN 'IC2000'
+        WHEN TRIM(a."Fahrzeug") = 'IC-2020' THEN 'IC-2020'
+        WHEN TRIM(a."Fahrzeug") = 'Pano' THEN 'Eurocity'
+        WHEN TRIM(a."Fahrzeug") = 'GTW' THEN 'GTW Seetal'
+        WHEN TRIM(a."Fahrzeug") = '526' THEN 'Flirt'
+        WHEN TRIM(a."Fahrzeug") = 'FV und Dosto' THEN 'FV-Dosto'
+        WHEN TRIM(a."Fahrzeug") = '501' THEN 'Giruno'
+        WHEN TRIM(a."Fahrzeug") = 'RBDe560' THEN 'Domino'
+        WHEN TRIM(a."Fahrzeug") = 'DTZ' THEN 'DTZ'
+        WHEN TRIM(a."Fahrzeug") = 'RV und Dosto' THEN 'RV-Dosto'
+        WHEN TRIM(a."Fahrzeug") = 'Domino' THEN 'Domino'
+        WHEN TRIM(a."Fahrzeug") = 'DPZ' THEN 'DPZ'
+        WHEN TRIM(a."Fahrzeug") = 'Aem' THEN 'Cargo'
+        WHEN TRIM(a."Fahrzeug") = 'EC' THEN 'Eurocity'
+        WHEN TRIM(a."Fahrzeug") = 'ICN' THEN 'ICN'
+        WHEN TRIM(a."Fahrzeug") = 'Tilo' THEN 'Flirt TSI'
+        WHEN TRIM(a."Fahrzeug") = '502' THEN 'FV-Dosto'
+        WHEN TRIM(a."Fahrzeug") = '511' THEN 'IR-Dosto'
+        WHEN TRIM(a."Fahrzeug") = 'EWI NPZ' THEN 'Einheitswagen alt'
+        WHEN TRIM(a."Fahrzeug") = 'EW und IV' THEN 'Eurocity'
+        WHEN TRIM(a."Fahrzeug") = 'EWII 50 85 203' THEN 'Einheitswagen alt'
+        WHEN TRIM(a."Fahrzeug") = 'EW 2' THEN 'Einheitswagen alt'
+        WHEN TRIM(a."Fahrzeug") = '514' THEN 'DTZ'
+        WHEN TRIM(a."Fahrzeug") = '520' THEN 'Rest'
+        WHEN TRIM(a."Fahrzeug") = 'Seetaler' THEN 'Seetaler'
+        WHEN TRIM(a."Fahrzeug") = 'EW 1' THEN 'Einheitswagen alt'
+        WHEN TRIM(a."Fahrzeug") = '521' THEN 'Flirt'
+        WHEN TRIM(a."Fahrzeug") = '522' THEN 'Flirt'
+        WHEN TRIM(a."Fahrzeug") = '523' THEN 'Flirt'
+        WHEN TRIM(a."Fahrzeug") = 'Inova' THEN 'Domino'
+        WHEN TRIM(a."Fahrzeug") = '524' THEN 'Flirt'
+        WHEN TRIM(a."Fahrzeug") = 'FNM' THEN 'Flirt TSI'
+        WHEN TRIM(a."Fahrzeug") = 'AJU' THEN 'Tochtergesellschaft'
+        WHEN TRIM(a."Fahrzeug") = 'Flirt TSI' THEN 'Flirt TSI'
+        WHEN TRIM(a."Fahrzeug") = 'AK' THEN 'Tochtergesellschaft'
+        WHEN TRIM(a."Fahrzeug") = 'Giruno' THEN 'Giruno'
+        WHEN TRIM(a."Fahrzeug") = 'Rico' THEN 'Tochtergesellschaft'
+        WHEN TRIM(a."Fahrzeug") = 'Th' THEN 'Tochtergesellschaft'
+        WHEN TRIM(a."Fahrzeug") = '560' THEN 'Lok'
+        WHEN TRIM(a."Fahrzeug") = '540' THEN 'Cargo'
+        WHEN TRIM(a."Fahrzeug") = 'S-Bahn' THEN 'Flirt'
+        WHEN TRIM(a."Fahrzeug") = 'Flirt und RV und NDW' THEN 'diverses (siehe SAP)'
+        WHEN TRIM(a."Fahrzeug") = 'SLB' THEN 'Tochtergesellschaft'
+        WHEN TRIM(a."Fahrzeug") = 'SNCF' THEN 'Ausland'
+        WHEN TRIM(a."Fahrzeug") = '503' THEN 'Astoro'
+        WHEN TRIM(a."Fahrzeug") = 'SOB' THEN 'Tochtergesellschaft'
+        WHEN TRIM(a."Fahrzeug") = 'SHZ' THEN 'Tochtergesellschaft'
+        WHEN TRIM(a."Fahrzeug") = 'Thurbo' THEN 'Tochtergesellschaft'
+        WHEN TRIM(a."Fahrzeug") = 'Vaudoi' THEN 'Flirt'
+        WHEN TRIM(a."Fahrzeug") = 'Dosto' THEN 'FV-Dosto'
+        WHEN TRIM(a."Fahrzeug") = 'TILO 6 3' THEN 'Flirt TSI'
+        WHEN TRIM(a."Fahrzeug") = 'Seehas' THEN 'Seetaler'
+        WHEN TRIM(a."Fahrzeug") = 'EW und 4' THEN 'Eurocity'
+        WHEN TRIM(a."Fahrzeug") = 'IR und Dosto' THEN 'IR-Dosto'
+        WHEN TRIM(a."Fahrzeug") = 'WRM' THEN 'Eurocity'
+        WHEN TRIM(a."Fahrzeug") = 'IV' THEN 'Eurocity'
+        WHEN TRIM(a."Fahrzeug") = 'VD 2' THEN 'Flirt TSI'
+        WHEN TRIM(a."Fahrzeug") = 'Zentralbahn' THEN 'Tochtergesellschaft'
+
+        ELSE 'Rest'
+    END AS "Fahrzeug"
+
+FROM bronze.ref_artikelliste a;
+
+
+TRUNCATE TABLE silver.ref_kalender;
+
+INSERT INTO silver.ref_kalender (
+    "Datum",
+    "Arbeitstage Olten",
+    "Arbeitstage Yverdon"
+)
+SELECT
+    LAST_DAY("Datum") AS "Datum",
+    SUM("AT Olten") AS "Arbeitstage Olten",
+    SUM("AT Yverdon") AS "Arbeitstage Yverdon"
+
+FROM bronze.ref_kalender
+
+GROUP BY
+    LAST_DAY("Datum")
+
+ORDER BY
+    "Datum";
+
+
+TRUNCATE TABLE silver.ref_flottenliste;
+
+INSERT INTO silver.ref_flottenliste (
+    "Artikel_ID",
+    "Ø Klimageräte FGR",
+    "Ø Klimageräte FST",
+    "Ø Alter",
+    "Ø Anzahl KM Juli Stand Juli 2026"
+)
+SELECT
+    CONCAT('2103-', "Artikel") AS "Artikel_ID",
+
+    AVG("Anzahl Klimageräte FGR") AS "Ø Klimageräte FGR",
+
+    AVG("Anzahl Klimageräte FST") AS "Ø Klimageräte FST",
+
+    AVG(
+        DATE_DIFF(
+            'year',
+            "Einführung",
+            CURRENT_DATE
+        )
+    ) AS "Ø Alter",
+
+    AVG("Anzahl KM Stand Juli 2026") AS "Ø Anzahl KM Juli Stand Juli 2026"
+
+FROM bronze.ref_flottenliste
+
+GROUP BY
+    CONCAT('2103-', "Artikel");
+
+TRUNCATE TABLE silver.ref_stueckliste;
+
+INSERT INTO silver.ref_stueckliste (
+    "Artikel_ID",
+    "Anzahl Unterkomponenten",
+    "Standardpreis total"
+)
+SELECT
+    CONCAT(
+        '2103-',
+        REPLACE("hauptartikel", '.csv', '')
+    ) AS "Artikel_ID",
+
+    COUNT(*) AS "Anzahl Unterkomponenten",
+
+    SUM(
+        "Komponentenmenge"
+        * "Einsatzwahrscheinlichkeit"
+        * "Standardpreis"
+    ) AS "Standardpreis total"
+
+FROM bronze.ref_stueckliste
+
+GROUP BY
+    CONCAT(
+        '2103-',
+        REPLACE("hauptartikel", '.csv', '')
+    );
