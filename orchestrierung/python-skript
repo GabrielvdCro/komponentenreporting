@@ -1,1 +1,508 @@
 
+import subprocess
+import sys
+from pathlib import Path
+
+import duckdb
+
+
+# ============================================================
+# KONFIGURATION
+# ============================================================
+
+DATENBANK = "md:komponentenreporting"
+
+PYTHON_QUELLDATEN = Path(
+    r"C:\Users\u234530\OneDrive - SBB\Komponentenreporting\Python Codes\quelldaten_pruefen.py"
+)
+
+SQL_ORDNER = Path(
+    r"C:\Users\u234530\OneDrive - SBB\Komponentenreporting\SQL Codes"
+)
+
+ORDNER_PLANUNG = Path(
+    r"C:\Users\u234530\OneDrive - SBB\Komponentenreporting\Inputdateien\Planung"
+)
+
+ORDNER_WARENEINGANG = Path(
+    r"C:\Users\u234530\OneDrive - SBB\Komponentenreporting\Inputdateien\Wareneingang"
+)
+
+ORDNER_WARENAUSGANG = Path(
+    r"C:\Users\u234530\OneDrive - SBB\Komponentenreporting\Inputdateien\Warenausgang"
+)
+
+
+# SQL-Dateien
+SQL_SCHEMA = SQL_ORDNER / "01_create_schema.sql"
+SQL_BRONZE = SQL_ORDNER / "02_create_bronze.sql"
+SQL_UPLOAD_BRONZE = SQL_ORDNER / "03_upload_bronze.sql"
+SQL_VALIDIERUNG_BRONZE = SQL_ORDNER / "04_validierung_bronze.sql"
+
+SQL_SILVER = SQL_ORDNER / "05_create_silver.sql"
+SQL_UPLOAD_SILVER = SQL_ORDNER / "06_upload_silver.sql"
+SQL_VALIDIERUNG_SILVER = SQL_ORDNER / "07_validierung_silber.sql"
+
+SQL_GOLD = SQL_ORDNER / "08_create_gold.sql"
+
+
+# ============================================================
+# HILFSFUNKTIONEN
+# ============================================================
+
+def titel(text):
+    print("\n" + "=" * 60)
+    print(text)
+    print("=" * 60)
+
+
+def sql_laden(datei):
+    """Liest eine SQL-Datei ein."""
+    return datei.read_text(encoding="utf-8")
+
+
+def sql_ausfuehren(con, datei):
+    """Führt eine SQL-Datei aus."""
+    print(f"SQL wird ausgeführt: {datei.name}")
+    con.execute(sql_laden(datei))
+    print("OK")
+
+
+def python_ausfuehren(datei):
+    """Führt ein externes Python-Skript aus."""
+    print(f"Python wird ausgeführt: {datei.name}")
+
+    subprocess.run(
+        [sys.executable, str(datei)],
+        check=True
+    )
+
+    print("OK")
+
+
+# ============================================================
+# DATUMSWERTE DER AKTUELLEN QUELLDATEIEN ERMITTELN
+# ============================================================
+
+def planungsdaten_ermitteln(con):
+    """
+    Liest alle extraction_date-Werte aus Spalte extraction_date
+    der aktuell im Planungsordner vorhandenen CSV-Dateien.
+    """
+
+    dateien = list(ORDNER_PLANUNG.glob("*.csv"))
+
+    daten = set()
+
+    for datei in dateien:
+
+        result = con.execute(
+            """
+            SELECT DISTINCT
+                TRY_CAST("extraction_date" AS DATE)
+            FROM read_csv_auto(?)
+            WHERE TRY_CAST("extraction_date" AS DATE) IS NOT NULL
+            """,
+            [str(datei)]
+        ).fetchall()
+
+        daten.update(row[0] for row in result)
+
+    return daten
+
+
+def buchungsdaten_ermitteln(con, ordner):
+    """
+    Liest alle Buchungsdatum-Werte aus den aktuell vorhandenen
+    CSV-Dateien eines Ordners.
+    """
+
+    dateien = list(ordner.glob("*.csv"))
+
+    daten = set()
+
+    for datei in dateien:
+
+        result = con.execute(
+            """
+            SELECT DISTINCT
+                TRY_CAST("Buchungsdatum" AS DATE)
+            FROM read_csv_auto(?)
+            WHERE TRY_CAST("Buchungsdatum" AS DATE) IS NOT NULL
+            """,
+            [str(datei)]
+        ).fetchall()
+
+        daten.update(row[0] for row in result)
+
+    return daten
+
+
+# ============================================================
+# ROLLBACK
+# ============================================================
+
+def rollback(con):
+
+    titel("ROLLBACK WIRD DURCHGEFÜHRT")
+
+    # --------------------------------------------------------
+    # Datumswerte der aktuellen Quelldateien bestimmen
+    # --------------------------------------------------------
+
+    planungsdaten = planungsdaten_ermitteln(con)
+
+    eingangsdaten = buchungsdaten_ermitteln(
+        con,
+        ORDNER_WARENEINGANG
+    )
+
+    ausgangsdaten = buchungsdaten_ermitteln(
+        con,
+        ORDNER_WARENAUSGANG
+    )
+
+
+    # --------------------------------------------------------
+    # Planung zurücksetzen
+    # --------------------------------------------------------
+
+    print("Planungsdaten werden zurückgesetzt...")
+
+    for datum in planungsdaten:
+
+        con.execute(
+            """
+            DELETE FROM bronze.sap_planung
+            WHERE "Extraktiondatum" = ?
+            """,
+            [datum]
+        )
+
+
+    # --------------------------------------------------------
+    # Wareneingang zurücksetzen
+    # --------------------------------------------------------
+
+    print("Wareneingänge werden zurückgesetzt...")
+
+    for datum in eingangsdaten:
+
+        con.execute(
+            """
+            DELETE FROM bronze.sap_materialeingang
+            WHERE TRY_CAST("Buchungsdatum" AS DATE) = ?
+            """,
+            [datum]
+        )
+
+
+    # --------------------------------------------------------
+    # Warenausgang zurücksetzen
+    # --------------------------------------------------------
+
+    print("Warenausgänge werden zurückgesetzt...")
+
+    for datum in ausgangsdaten:
+
+        con.execute(
+            """
+            DELETE FROM bronze.sap_materialausgang
+            WHERE TRY_CAST("Buchungsdatum" AS DATE) = ?
+            """,
+            [datum]
+        )
+
+
+    # --------------------------------------------------------
+    # Bronze-Referenztabellen komplett leeren
+    # --------------------------------------------------------
+
+    print("Bronze-Referenztabellen werden geleert...")
+
+    bronze_referenzen = [
+        "bronze.ref_artikelliste",
+        "bronze.ref_taktmenge",
+        "bronze.ref_kalender",
+        "bronze.ref_flottenliste",
+        "bronze.ref_stueckliste"
+    ]
+
+    for tabelle in bronze_referenzen:
+        con.execute(f"TRUNCATE TABLE {tabelle}")
+
+
+    # --------------------------------------------------------
+    # Silver komplett leeren
+    # --------------------------------------------------------
+
+    print("Silver-Layer wird geleert...")
+
+    silver_tabellen = [
+        "silver.sap_planung",
+        "silver.sap_materialeingang",
+        "silver.sap_materialausgang",
+        "silver.ref_artikelliste",
+        "silver.ref_takt",
+        "silver.ref_kalender",
+        "silver.ref_flottenliste",
+        "silver.ref_stueckliste"
+    ]
+
+    for tabelle in silver_tabellen:
+        con.execute(f"TRUNCATE TABLE {tabelle}")
+
+
+    # --------------------------------------------------------
+    # Gold-Views entfernen
+    # --------------------------------------------------------
+
+    print("Gold-Views werden entfernt...")
+
+    gold_views = [
+        "gold.dim_artikelliste",
+        "gold.fact_planung",
+        "gold.fact_reparaturen",
+        "gold.fact_materialeingang"
+    ]
+
+    for view in gold_views:
+        con.execute(f"DROP VIEW IF EXISTS {view}")
+
+
+    titel("ROLLBACK ABGESCHLOSSEN")
+
+    print("Quelldateien korrigieren und Pipeline erneut starten.")
+
+
+# ============================================================
+# BRONZE VALIDIEREN
+# ============================================================
+
+def bronze_validieren(con):
+
+    titel("BRONZE VALIDIEREN")
+
+    sql = sql_laden(SQL_VALIDIERUNG_BRONZE)
+
+    result = con.execute(sql).fetchdf()
+
+    print(result.to_string(index=False))
+
+    fehler = result[
+        result["anzahl_datensaetze"] == 0
+    ]
+
+    if not fehler.empty:
+
+        print("\nFEHLER:")
+        print("Mindestens eine Bronze-Tabelle enthält keine Daten.")
+
+        print("\nBetroffene Tabellen:")
+        print(fehler.to_string(index=False))
+
+        return False
+
+    print("\nBronze-Validierung erfolgreich.")
+
+    return True
+
+
+# ============================================================
+# SILVER VALIDIEREN
+# ============================================================
+
+def silver_validieren(con):
+
+    titel("SILVER VALIDIEREN")
+
+    sql = sql_laden(SQL_VALIDIERUNG_SILVER)
+
+    result = con.execute(sql).fetchdf()
+
+    if not result.empty:
+
+        print("FEHLER IN SILVER:\n")
+
+        print(result.to_string(index=False))
+
+        print(
+            f"\nAnzahl gefundener Fehler: {len(result)}"
+        )
+
+        return False
+
+    print("Keine Fehler gefunden.")
+    print("Silver-Validierung erfolgreich.")
+
+    return True
+
+
+# ============================================================
+# ORCHESTRIERUNG
+# ============================================================
+
+def main():
+
+    con = None
+
+    try:
+
+        # ----------------------------------------------------
+        # 1. Quelldaten prüfen
+        # ----------------------------------------------------
+
+        titel("1. QUELLDATEN PRÜFEN")
+
+        python_ausfuehren(
+            PYTHON_QUELLDATEN
+        )
+
+
+        # ----------------------------------------------------
+        # Verbindung MotherDuck
+        # ----------------------------------------------------
+
+        titel("VERBINDUNG ZU MOTHERDUCK")
+
+        con = duckdb.connect(DATENBANK)
+
+        print("Verbindung erfolgreich.")
+
+
+        # ----------------------------------------------------
+        # 2. Schema erstellen
+        # ----------------------------------------------------
+
+        titel("2. SCHEMA ERSTELLEN")
+
+        sql_ausfuehren(
+            con,
+            SQL_SCHEMA
+        )
+
+
+        # ----------------------------------------------------
+        # 3. Bronze erstellen
+        # ----------------------------------------------------
+
+        titel("3. BRONZE ERSTELLEN")
+
+        sql_ausfuehren(
+            con,
+            SQL_BRONZE
+        )
+
+
+        # ----------------------------------------------------
+        # 4. Bronze laden
+        # ----------------------------------------------------
+
+        titel("4. BRONZE LADEN")
+
+        sql_ausfuehren(
+            con,
+            SQL_UPLOAD_BRONZE
+        )
+
+
+        # ----------------------------------------------------
+        # 5. Bronze validieren
+        # ----------------------------------------------------
+
+        if not bronze_validieren(con):
+
+            rollback(con)
+            return
+
+
+        # ----------------------------------------------------
+        # 6. Silver erstellen
+        # ----------------------------------------------------
+
+        titel("6. SILVER ERSTELLEN")
+
+        sql_ausfuehren(
+            con,
+            SQL_SILVER
+        )
+
+
+        # ----------------------------------------------------
+        # 7. Silver laden
+        # ----------------------------------------------------
+
+        titel("7. SILVER LADEN")
+
+        sql_ausfuehren(
+            con,
+            SQL_UPLOAD_SILVER
+        )
+
+
+        # ----------------------------------------------------
+        # 8. Silver validieren
+        # ----------------------------------------------------
+
+        if not silver_validieren(con):
+
+            rollback(con)
+            return
+
+
+        # ----------------------------------------------------
+        # 9. Gold erstellen
+        # ----------------------------------------------------
+
+        titel("9. GOLD ERSTELLEN")
+
+        sql_ausfuehren(
+            con,
+            SQL_GOLD
+        )
+
+
+        # ----------------------------------------------------
+        # Fertig
+        # ----------------------------------------------------
+
+        titel("PIPELINE ERFOLGREICH ABGESCHLOSSEN")
+
+        print("Gold steht bereit für weitere Analysen")
+
+
+    # ========================================================
+    # Unerwarteter technischer Fehler
+    # ========================================================
+
+    except Exception as fehler:
+
+        titel("PIPELINE ABGEBROCHEN")
+
+        print("Es ist ein unerwarteter Fehler aufgetreten:")
+        print(fehler)
+
+        if con is not None:
+
+            try:
+                rollback(con)
+
+            except Exception as rollback_fehler:
+
+                print("\nACHTUNG:")
+                print("Auch beim Rollback ist ein Fehler aufgetreten:")
+                print(rollback_fehler)
+
+
+    finally:
+
+        if con is not None:
+            con.close()
+
+
+# ============================================================
+# START
+# ============================================================
+
+if __name__ == "__main__":
+    main()
