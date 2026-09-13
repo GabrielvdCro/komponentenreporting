@@ -1,1 +1,131 @@
-oo
+/* ============================================================
+   Gold-Layer erstellen
+   ============================================================ */
+
+/* ============================================================
+   Dimension: Artikelliste
+   ============================================================ */
+
+CREATE OR REPLACE VIEW gold.dim_artikelliste AS
+
+SELECT
+    -- Artikelstammdaten
+    a."Artikel_ID",
+    a."Werk",
+    a."Material",
+    a."Beschrieb" AS "Artikelbezeichnung",
+    a."Materialgruppe",
+    a."Fahrzeug",
+
+    -- Takt / Kapazität
+    COALESCE(t."Taktmenge pro Tag", 0) AS "Taktmenge pro Tag",
+
+    -- Flotteninformationen
+    COALESCE(f."Ø Klimageräte FGR", 0) AS "Ø Klimageräte FGR",
+    COALESCE(f."Ø Klimageräte FST", 0) AS "Ø Klimageräte FST",
+    COALESCE(f."Ø Alter", 0) AS "Ø Flottenalter",
+    COALESCE(
+        f."Ø Anzahl KM Juli Stand Juli 2026",
+        0
+    ) AS "Ø Kilometerstand Juli 2026",
+
+    -- Stücklisteninformationen
+    COALESCE(
+        s."Anzahl Unterkomponenten",
+        0
+    ) AS "Anzahl Unterkomponenten",
+
+    COALESCE(
+        s."Standardpreis total",
+        0
+    ) AS "Wert Unterkomponenten"
+
+FROM silver.ref_artikelliste AS a
+
+LEFT JOIN silver.ref_takt AS t
+    ON a."Materialgruppe" = t."Materialgruppe"
+
+LEFT JOIN silver.ref_flottenliste AS f
+    ON a."Artikel_ID" = f."Artikel_ID"
+
+LEFT JOIN silver.ref_stueckliste AS s
+    ON a."Artikel_ID" = s."Artikel_ID";
+
+
+/* ============================================================
+   Faktentabelle: Planung
+   ============================================================ */
+
+CREATE OR REPLACE VIEW gold.fact_planung AS
+
+SELECT
+    p."Artikel_ID",
+    p."Extraktiondatum",
+    p."Art",
+    p."Dispositionselement",
+    p."Bestell-/Auftragsart",
+    p."Nummer Dispositionselement",
+    p."Verursacher",
+    p."Zugang/Bedarf" AS "Planmenge",
+    p."Plantermine" AS "Planmonat",
+
+    CASE
+        WHEN a."Werk" = 'Olten'
+            THEN COALESCE(k."Arbeitstage Olten", 0)
+
+        WHEN a."Werk" = 'Yverdon'
+            THEN COALESCE(k."Arbeitstage Yverdon", 0)
+
+        ELSE 0
+    END AS "Arbeitstage"
+
+FROM silver.sap_planung AS p
+
+LEFT JOIN silver.ref_artikelliste AS a
+    ON p."Artikel_ID" = a."Artikel_ID"
+
+LEFT JOIN silver.ref_kalender AS k
+    ON p."Plantermine" = k."Datum";
+
+
+/* ============================================================
+   Faktentabelle: Reparaturen
+   ============================================================ */
+
+CREATE OR REPLACE VIEW gold.fact_reparaturen AS
+
+SELECT
+    "Artikel_ID",
+    "Bewegungsart",
+    "Buchungsdatum",
+    "Menge in ErfassME" AS "Reparaturmenge",
+
+FROM silver.sap_materialausgang
+
+WHERE "Warenempfänger" = 'Reparatur';
+
+
+/* ============================================================
+   Faktentabelle: Materialeingänge
+   ============================================================ */
+
+CREATE OR REPLACE VIEW gold.fact_materialeingang AS
+
+SELECT
+    "Artikel_ID",
+    "Bewegungsart",
+    "Buchungsdatum",
+    "Menge in ErfassME" AS "Wareneingangsmenge",
+    "Auftrag"
+
+FROM silver.sap_materialeingang;
+
+
+/* ============================================================
+   Kontrolle
+   ============================================================ */
+
+SELECT * FROM gold.dim_artikelliste;
+SELECT * FROM gold.fact_planung;
+SELECT * FROM gold.fact_reparaturen;
+SELECT * FROM gold.fact_materialeingang;
