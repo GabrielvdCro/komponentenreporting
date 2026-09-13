@@ -1,1 +1,112 @@
 
+# ============================================================
+# 1. Bibliotheken und Daten laden
+# ============================================================
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn import metrics
+
+df = pd.read_excel("reparaturdaten.xlsx")
+
+
+# ============================================================
+# 2. Einflussvariablen x und Zielvariable y definieren
+# ============================================================
+
+X = df[[
+    "Ist_2020",
+    "Ist_2021",
+    "Ist_2022",
+    "Ist_2023",
+    "Ist_2024",
+    "Ist_2025",
+    "Flottenalter",
+    "KM",
+    "Anzahl_Komponenten",
+    "Preis"
+]]
+
+y = df["Ist_2026"]
+
+
+# ============================================================
+# 3. Trainings- und Testdaten aufteilen
+# 80 % Training / 20 % Test
+# ============================================================
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=2601
+)
+
+
+# ============================================================
+# 4. Lineare Regression erstellen und trainieren
+# ============================================================
+
+model = LinearRegression()
+
+model.fit(X_train, y_train)
+
+
+# ============================================================
+# 5. Testdaten prognostizieren
+# ============================================================
+
+y_pred = model.predict(X_test)
+
+
+# ============================================================
+# 6. Modell validieren
+# ============================================================
+
+mae = metrics.mean_absolute_error(y_test, y_pred)
+r2 = metrics.r2_score(y_test, y_pred)
+
+print("MAE:", mae)
+print("R²:", r2)
+
+
+# ============================================================
+# 7. Modell mit allen vorhandenen Daten trainieren
+# ============================================================
+
+model.fit(X, y)
+
+
+# ============================================================
+# 8. Reparaturmengen 2027 prognostizieren
+# ============================================================
+
+X_2027 = df[[
+    "Ist_2021",
+    "Ist_2022",
+    "Ist_2023",
+    "Ist_2024",
+    "Ist_2025",
+    "Ist_2026",
+    "Flottenalter",
+    "KM",
+    "Anzahl_Komponenten",
+    "Preis"
+]]
+X_2027.columns = X.columns
+
+df["Prognose_2027"] = model.predict(X_2027)
+
+
+# ============================================================
+# 9. Ergebnis als Excel speichern
+# ============================================================
+
+df[[
+    "Artikel_ID",
+    "Prognose_2027"
+]].to_excel(
+    "Reparaturprognose_2027.xlsx",
+    index=False
+)
